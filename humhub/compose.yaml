@@ -1,0 +1,74 @@
+x-humhub-environment: &humhub-environment
+    SERVER_NAME: ${SERVER_NAME}
+    HUMHUB_DEBUG: ${HUMHUB_DEBUG}
+    HUMHUB_CONFIG__COMPONENTS__DB__DSN: ${HUMHUB_CONFIG__COMPONENTS__DB__DSN}
+    HUMHUB_CONFIG__COMPONENTS__DB__USERNAME: ${HUMHUB_CONFIG__COMPONENTS__DB__USERNAME}
+    HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD: ${HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD}
+    HUMHUB_CONFIG__CONTROLLER_MAP__INSTALLER: ${HUMHUB_CONFIG__CONTROLLER_MAP__INSTALLER}
+
+services:
+    db:
+        image: mariadb:11
+        restart: unless-stopped
+        command:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+        environment:
+            MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+            MARIADB_DATABASE: ${MARIADB_DATABASE}
+            MARIADB_USER: ${MARIADB_USER}
+            MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+        volumes:
+            - db_data:/var/lib/mysql
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "mariadb-admin ping -h 127.0.0.1 -u root -p${MARIADB_ROOT_PASSWORD} --silent",
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+
+    install:
+        image: humhub/humhub:stable
+        restart: "no"
+        depends_on:
+            db:
+                condition: service_healthy
+        volumes:
+            - humhub_data:/data
+        environment: *humhub-environment
+        entrypoint: ["/bin/bash", "-c"]
+        command:
+            - |
+              set -e
+              mkdir -p /data/uploads /data/assets /data/logs /data/config /data/modules /data/modules-custom /data/themes /data/caddy
+              cp -rn /opt/humhub/protected/config/. /data/config/
+              cp -rn /opt/humhub/uploads/. /data/uploads/
+              cp -rf /opt/humhub/themes/HumHub /data/themes/HumHub
+              chown -R www-data:www-data /app/runtime /data
+              if [ ! -f /data/config/dynamic.php ]; then
+                  /app/yii installer/write-db-config db "${MARIADB_DATABASE}" "${MARIADB_USER}" "${MARIADB_PASSWORD}"
+                  /app/yii installer/install-db
+                  /app/yii installer/write-site-config "HumHub" "${HUMHUB_ADMIN_EMAIL}"
+                  /app/yii installer/create-admin-account "${HUMHUB_ADMIN_USER}" "${HUMHUB_ADMIN_EMAIL}" "${HUMHUB_ADMIN_PASSWORD}"
+              fi
+              /app/yii installer/set-base-url "${SERVER_NAME}"
+              chown -R www-data:www-data /data
+
+    web:
+        image: humhub/humhub:stable
+        restart: unless-stopped
+        depends_on:
+            install:
+                condition: service_completed_successfully
+        ports:
+            - "8081:8081"
+        volumes:
+            - humhub_data:/data
+        environment: *humhub-environment
+
+volumes:
+    db_data:
+    humhub_data:

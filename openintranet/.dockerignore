@@ -1,0 +1,6 @@
+.git
+.gitignore
+.ddev
+Dockerfile*
+compose*.yml
+*.log

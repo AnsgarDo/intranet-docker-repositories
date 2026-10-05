@@ -1,0 +1,103 @@
+services:
+    db:
+        image: mariadb:11
+        restart: unless-stopped
+        environment:
+            MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+            MARIADB_DATABASE: ${MARIADB_DATABASE}
+            MARIADB_USER: ${MARIADB_USER}
+            MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+        volumes:
+            - db_data:/var/lib/mysql
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "mariadb-admin ping -h 127.0.0.1 -u root -p${MARIADB_ROOT_PASSWORD} --silent",
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+
+    web:
+        build:
+            context: ..
+            dockerfile: openintranet/Dockerfile
+        image: openintranet:1.11.0
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+        environment:
+            DB_HOST: db
+            DB_PORT: "3306"
+            DB_NAME: ${MARIADB_DATABASE}
+            DB_USER: ${MARIADB_USER}
+            DB_PASSWORD: ${MARIADB_PASSWORD}
+        volumes:
+            - app_data:/opt/openintranet
+
+    install:
+        image: openintranet:1.11.0
+        restart: "no"
+        depends_on:
+            db:
+                condition: service_healthy
+            web:
+                condition: service_started
+        environment:
+            DB_HOST: db
+            DB_PORT: "3306"
+            DB_NAME: ${MARIADB_DATABASE}
+            DB_USER: ${MARIADB_USER}
+            DB_PASSWORD: ${MARIADB_PASSWORD}
+            DRUPAL_ADMIN_USER: ${DRUPAL_ADMIN_USER}
+            DRUPAL_ADMIN_PASSWORD: ${DRUPAL_ADMIN_PASSWORD}
+            DRUPAL_ADMIN_EMAIL: ${DRUPAL_ADMIN_EMAIL}
+        volumes:
+            - app_data:/opt/openintranet
+        entrypoint:
+            - /bin/bash
+            - -c
+        command:
+            - |
+                set -e
+
+                cd /opt/openintranet
+
+                if [ ! -f web/sites/default/settings.php ]; then
+                  mkdir -p web/sites/default/files private
+
+                  cp web/sites/default/default.settings.php \
+                     web/sites/default/settings.php
+
+                  chown -R www-data:www-data \
+                    web/sites/default/files \
+                    private \
+                    web/sites/default/settings.php
+
+                  su -s /bin/bash www-data -c \
+                    "vendor/bin/drush site:install standard \
+                      --db-url=mysql://$${DB_USER}:$${DB_PASSWORD}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME} \
+                      --site-name='Open Intranet' \
+                      --account-name='$${DRUPAL_ADMIN_USER}' \
+                      --account-pass='$${DRUPAL_ADMIN_PASSWORD}' \
+                      --account-mail='$${DRUPAL_ADMIN_EMAIL}' \
+                      --yes"
+                fi
+
+    proxy:
+        image: nginx:1.31.6
+        restart: unless-stopped
+        depends_on:
+            install:
+                condition: service_completed_successfully
+        ports:
+            - "8080:80"
+        volumes:
+            - app_data:/opt/openintranet:ro
+            - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+    db_data:
+    app_data:

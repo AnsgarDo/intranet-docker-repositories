@@ -1,0 +1,8 @@
+*.crt
+*.key
+*.pem
+*.env
+*.zip
+*.tar.gz
+*.tgz
+*.log

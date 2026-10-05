@@ -1,0 +1,5 @@
+.git
+.gitignore
+*.tar.gz
+*.zip
+.DS_Store

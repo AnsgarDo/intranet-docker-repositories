@@ -1,0 +1,53 @@
+services:
+
+  search:
+    image: ${BLUESPICE_SERVICE_REPOSITORY}/search:${VERSION}
+    container_name: ${COMPOSE_PROJECT_NAME:-bluespice}-search
+    restart: unless-stopped
+    volumes:
+      - search_data:/usr/share/opensearch/data
+    healthcheck:
+      test: curl -f http://localhost:9200
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db:
+    image: ${BLUESPICE_SERVICE_REPOSITORY}/database:${VERSION}
+    container_name: ${COMPOSE_PROJECT_NAME:-bluespice}-db
+    restart: unless-stopped
+    volumes:
+      - db_logs:/config/log/mysql
+      - db_data:/config/databases
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASS}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASS}
+    healthcheck:
+      test: mysqladmin ping
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  wiki-installer:
+    depends_on:
+        db:
+            condition: service_healthy
+        search:
+            condition: service_healthy
+
+  wiki-web:
+    depends_on:
+        db:
+            condition: service_healthy
+        search:
+            condition: service_healthy
+  wiki-task:
+    depends_on:
+        db:
+            condition: service_healthy
+        search:
+            condition: service_healthy
