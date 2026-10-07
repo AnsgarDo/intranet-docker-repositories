@@ -19,3 +19,4 @@ docker compose up -d
 | `DRUPAL_ADMIN_USER` | Benutzername des Drupal-Administrators |
 | `DRUPAL_ADMIN_PASSWORD` | Passwort des Drupal-Administrators |
 | `DRUPAL_ADMIN_EMAIL` | E-Mail-Adresse des Drupal-Administrators |
+| `DRUPAL_DEMO_CONTENT` | Demo-Inhalte mitinstallieren (`1` = ja, `0` = leeres Intranet) |

@@ -54,6 +54,7 @@ services:
             DRUPAL_ADMIN_USER: ${DRUPAL_ADMIN_USER}
             DRUPAL_ADMIN_PASSWORD: ${DRUPAL_ADMIN_PASSWORD}
             DRUPAL_ADMIN_EMAIL: ${DRUPAL_ADMIN_EMAIL}
+            DRUPAL_DEMO_CONTENT: ${DRUPAL_DEMO_CONTENT}
         volumes:
             - app_data:/opt/openintranet
         entrypoint:
@@ -66,23 +67,31 @@ services:
                 cd /opt/openintranet
 
                 if [ ! -f web/sites/default/settings.php ]; then
-                  mkdir -p web/sites/default/files private
+                  mkdir -p web/sites/default/files web/sites/private_files
 
                   cp web/sites/default/default.settings.php \
                      web/sites/default/settings.php
 
+                  # The install profile configures the private file system too,
+                  # but that happens mid-install and is too late for the already
+                  # running installer - without it the demo content import fails.
+                  cat >> web/sites/default/settings.php <<'EOF'
+                $$settings['file_private_path'] = 'sites/private_files';
+                EOF
+
                   chown -R www-data:www-data \
                     web/sites/default/files \
-                    private \
+                    web/sites/private_files \
                     web/sites/default/settings.php
 
                   su -s /bin/bash www-data -c \
-                    "vendor/bin/drush site:install standard \
+                    "vendor/bin/drush site:install openintranet \
                       --db-url=mysql://$${DB_USER}:$${DB_PASSWORD}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME} \
                       --site-name='Open Intranet' \
                       --account-name='$${DRUPAL_ADMIN_USER}' \
                       --account-pass='$${DRUPAL_ADMIN_PASSWORD}' \
                       --account-mail='$${DRUPAL_ADMIN_EMAIL}' \
+                      install_configure_form.enable_demo_content=$${DRUPAL_DEMO_CONTENT} \
                       --yes"
                 fi
 
