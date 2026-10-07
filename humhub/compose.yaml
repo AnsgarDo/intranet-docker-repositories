@@ -6,6 +6,10 @@ x-humhub-environment: &humhub-environment
     HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD: ${HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD}
     HUMHUB_CONFIG__CONTROLLER_MAP__INSTALLER: ${HUMHUB_CONFIG__CONTROLLER_MAP__INSTALLER}
 
+x-humhub-build: &humhub-build
+    context: ..
+    dockerfile: humhub/Dockerfile
+
 services:
     db:
         image: mariadb:11
@@ -31,7 +35,8 @@ services:
             retries: 30
 
     install:
-        image: humhub/humhub:stable
+        build: *humhub-build
+        image: humhub:local
         restart: "no"
         depends_on:
             db:
@@ -58,7 +63,8 @@ services:
               chown -R www-data:www-data /data
 
     web:
-        image: humhub/humhub:stable
+        build: *humhub-build
+        image: humhub:local
         restart: unless-stopped
         depends_on:
             install:
