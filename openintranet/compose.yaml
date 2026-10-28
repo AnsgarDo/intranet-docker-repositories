@@ -1,3 +1,7 @@
+x-openintranet-build: &openintranet-build
+    context: ..
+    dockerfile: openintranet/Dockerfile
+
 services:
     db:
         image: mariadb:11
@@ -20,9 +24,7 @@ services:
             retries: 30
 
     web:
-        build:
-            context: ..
-            dockerfile: openintranet/Dockerfile
+        build: *openintranet-build
         image: openintranet:1.11.0
         restart: unless-stopped
         depends_on:
@@ -38,6 +40,7 @@ services:
             - app_data:/opt/openintranet
 
     install:
+        build: *openintranet-build
         image: openintranet:1.11.0
         restart: "no"
         depends_on:
@@ -54,7 +57,7 @@ services:
             DRUPAL_ADMIN_USER: ${DRUPAL_ADMIN_USER}
             DRUPAL_ADMIN_PASSWORD: ${DRUPAL_ADMIN_PASSWORD}
             DRUPAL_ADMIN_EMAIL: ${DRUPAL_ADMIN_EMAIL}
-            DRUPAL_DEMO_CONTENT: ${DRUPAL_DEMO_CONTENT}
+            DRUPAL_DEMO_CONTENT: ${DRUPAL_DEMO_CONTENT:-0}
         volumes:
             - app_data:/opt/openintranet
         entrypoint:
