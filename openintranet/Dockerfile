@@ -4,9 +4,13 @@ FROM composer:2.10.3 AS build
 
 ARG OI_VERSION=1.11.0
 
-COPY certs/*.crt /usr/local/share/ca-certificates/
+COPY certs /tmp/certs
 
-RUN update-ca-certificates
+RUN if ls /tmp/certs/*.crt >/dev/null 2>&1; then \
+        cp /tmp/certs/*.crt /usr/local/share/ca-certificates/; \
+        update-ca-certificates; \
+    fi \
+    && rm -rf /tmp/certs
 
 RUN apk add --no-cache \
         ca-certificates \
@@ -40,9 +44,13 @@ RUN composer install \
 
 FROM drupal:11.3-apache AS app
 
-COPY certs/*.crt /usr/local/share/ca-certificates/
+COPY certs /tmp/certs
 
-RUN update-ca-certificates
+RUN if ls /tmp/certs/*.crt >/dev/null 2>&1; then \
+        cp /tmp/certs/*.crt /usr/local/share/ca-certificates/; \
+        update-ca-certificates; \
+    fi \
+    && rm -rf /tmp/certs
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

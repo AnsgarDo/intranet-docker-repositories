@@ -23,7 +23,6 @@ services:
             retries: 30
 
     bookstack:
-        # Community-Image, keine eigene Dockerfile noetig
         image: solidnerd/bookstack:26.9.2
         restart: unless-stopped
         depends_on:
@@ -32,9 +31,8 @@ services:
         ports:
             - "8082:8080"
         environment:
-            # Basis-URL ohne abschliessenden Slash, inkl. Port
             APP_URL: ${APP_URL:-http://localhost:8082}
-            # 32 Zeichen, dauerhaft beibehalten (sonst sind Daten nicht mehr entschluesselbar)
+            # never change: existing data can't be decrypted otherwise
             APP_KEY: ${APP_KEY}
             DB_HOST: db:3306
             DB_DATABASE: ${DB_DATABASE:-bookstack}

@@ -4,6 +4,10 @@ FROM humhub/humhub:stable
 
 USER root
 
-COPY certs/*.crt /usr/local/share/ca-certificates/
+COPY certs /tmp/certs
 
-RUN update-ca-certificates
+RUN if ls /tmp/certs/*.crt >/dev/null 2>&1; then \
+        cp /tmp/certs/*.crt /usr/local/share/ca-certificates/; \
+        update-ca-certificates; \
+    fi \
+    && rm -rf /tmp/certs

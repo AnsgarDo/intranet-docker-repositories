@@ -1,3 +1,1 @@
-All certificates inside the certs folder will be loaded.
-
-Uploading certificates may prevent issues with networks if behind a firewall
+Optional: drop `*.crt` files here to trust an internal CA in the images.
